@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+// 恢复原始导入名称
 import { Web3Provider } from './contexts/Web3Context';
 import Home from './pages/Home';
 import ProjectDetail from './pages/ProjectDetail';
@@ -7,6 +8,7 @@ import ConnectWallet from './components/ConnectWallet';
 
 function App() {
   return (
+    // 使用原始组件名称
     <Web3Provider>
       <BrowserRouter>
         <nav>

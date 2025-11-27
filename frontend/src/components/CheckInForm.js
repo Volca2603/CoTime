@@ -9,14 +9,16 @@ const CheckInForm = ({ projectId }) => {
   const [file, setFile] = useState(null);
 
   // 生成签名
+  // 修改签名生成函数中的API调用
   const getSignature = async (proofHash) => {
     const timestamp = Math.floor(Date.now() / 1000);
-    // 构造消息哈希（与合约一致）
-    const messageHash = ethers.utils.solidityKeccak256(
+    // 修改这里 - ethers v6 中 solidityKeccak256 改为 solidityPackedKeccak256
+    // arrayify 改为 toBeArray
+    const messageHash = ethers.solidityPackedKeccak256(
       ["uint256", "string", "uint256", "address"],
       [projectId, proofHash, timestamp, address]
     );
-    const signature = await signer.signMessage(ethers.utils.arrayify(messageHash));
+    const signature = await signer.signMessage(ethers.getBytes(messageHash));
     return { timestamp, signature };
   };
 

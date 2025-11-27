@@ -13,9 +13,9 @@ const PublishProject = () => {
   const publish = async () => {
     if (!signer) return alert("请连接钱包");
     const contract = getContract(signer);
-    // 将字符串转为bytes32
-    const nameBytes32 = ethers.utils.formatBytes32String(name);
-    const themeBytes32 = ethers.utils.formatBytes32String(theme);
+    // 修改这里 - ethers v6 中 formatBytes32String 改为 encodeBytes32String
+    const nameBytes32 = ethers.encodeBytes32String(name);
+    const themeBytes32 = ethers.encodeBytes32String(theme);
     
     try {
       const tx = await contract.publishProject(

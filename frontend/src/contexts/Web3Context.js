@@ -1,9 +1,10 @@
 import { createContext, useState, useEffect } from 'react';
 import Web3Modal from 'web3modal';
-import { ethers } from 'ethers';
+import { ethers, BrowserProvider } from 'ethers'; // 使用正确的BrowserProvider
 
 export const Web3Context = createContext();
 
+// 保持组件名称，避免与导入的BrowserProvider冲突
 export const Web3Provider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -13,14 +14,16 @@ export const Web3Provider = ({ children }) => {
   // 初始化钱包连接
   const connectWallet = async () => {
     const web3Modal = new Web3Modal({
-      network: "mumbai", // 测试网
+      network: "sepolia", 
       cacheProvider: true,
     });
     const instance = await web3Modal.connect();
-    const ethersProvider = new ethers.providers.Web3Provider(instance);
-    const ethersSigner = ethersProvider.getSigner();
+    // 使用BrowserProvider替代Web3Provider
+    const ethersProvider = new BrowserProvider(instance);
+    const ethersSigner = await ethersProvider.getSigner(); // 在v6中需要await
     const addr = await ethersSigner.getAddress();
-    const cid = await ethersProvider.getNetwork().then(net => net.chainId);
+    const network = await ethersProvider.getNetwork();
+    const cid = network.chainId;
 
     setProvider(ethersProvider);
     setSigner(ethersSigner);
