@@ -26,6 +26,10 @@ contract CoTime is ERC721, ReentrancyGuard {
     // 用户NFT等级：地址 → 项目ID → 等级（0=无，1=元气，2=闪耀，3=限定）
     mapping(address => mapping(uint256 => uint256)) public userNftLevel;
     
+    mapping(address => mapping(uint256 => bool)) public globalUserCheckInRecord;  
+    mapping(address => uint256) public userGlobalTotalCheckInDays;               
+    
+    
     mapping(uint256 => CoProject) public projects; // 项目ID→信息
     uint256 public projectCounter; // 项目计数器
 
@@ -49,7 +53,7 @@ contract CoTime is ERC721, ReentrancyGuard {
     event ProjectFinished(uint256 indexed projectId,uint256 finishTime);
 
     constructor() ERC721("CoTime", "CT") {
-        
+        projectCounter = 1;
     }
 
     // 发布项目
@@ -82,8 +86,9 @@ contract CoTime is ERC721, ReentrancyGuard {
     function joinProject(uint256 _projectId) external {
         require(_projectId < projectCounter, "Project not exist");
         CoProject storage project = projects[_projectId];
-        // 用结构体的maxMembers判断，而非写死数字
         require(project.memberCount < project.maxMembers, "Team is full");
+        require(project.isMember[msg.sender] != true,"Already in");
+        
     
         project.isMember[msg.sender] = true;
         project.memberCount++;
@@ -113,6 +118,10 @@ contract CoTime is ERC721, ReentrancyGuard {
 
         // 4. 验证今日未打卡（按日期戳判断，取当天0点时间戳）
         uint256 today = block.timestamp - (block.timestamp % 86400);
+        if(!globalUserCheckInRecord[msg.sender][today]){
+            globalUserCheckInRecord[msg.sender][today] = true;
+            userGlobalTotalCheckInDays[msg.sender]++;
+        }
         require(!userCheckInRecord[msg.sender][_projectId][today], "Already checked in today");
 
         // 5. 更新打卡记录和连续天数
@@ -221,9 +230,10 @@ contract CoTime is ERC721, ReentrancyGuard {
     }
 
     // 分页获取用户创建的项目 ID 列表
-    function getMyProjects(uint256 _startIndex, uint256 _limit) external view returns (uint256[] memory) {
+    function getMyProjects(uint256 _startIndex, uint256 _limit ,address _user) external view returns (uint256[] memory) {
         require(_limit <= 50, "Max 50 projects per query");  // 防止 Gas 超限
-        uint256[] memory projectIds = userCreatedProjects[msg.sender];
+        require(_user != address(0),"Invalid address");
+        uint256[] memory projectIds = userCreatedProjects[_user];
         uint256 endIndex = _startIndex + _limit;
         if (endIndex > projectIds.length) endIndex = projectIds.length;
 
@@ -235,8 +245,12 @@ contract CoTime is ERC721, ReentrancyGuard {
     }
 
 
-    function isMemberOfProject(uint256 _projectId) public view returns (bool) {
-        return projects[_projectId].isMember[msg.sender];
+    function isMemberOfProject(uint256 _projectId, address _user) public view returns (bool) {
+        return projects[_projectId].isMember[_user];
+    }
+
+    function getTotalCheckInDays(uint256 _projectId) external view returns (uint256) {
+        return userGlobalTotalCheckInDays[msg.sender];
     }
     // 提取合约资金（可选）
     // function withdrawFunds() external onlyOwner {
