@@ -6,6 +6,19 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract CoTime is ERC721, ReentrancyGuard {
     uint256 private _tokenIdCounter = 1;
+
+    enum NftType {
+        None,                  // 0: 未铸造
+        ProjectCreator,        // 1: 项目启航者（首次创建项目）
+        FirstCheckIn,          // 2: 初次打卡达人（首次打卡）
+        Streak3Days,           // 3: 三日连签先锋（连续3天打卡）
+        WeekFullAttendance,    // 4: 一周全勤标兵（单周7天打卡）
+        MilestoneBreaker,      // 5: 里程碑突破者（打卡总天数超过30）
+        Streak15Days,          // 6: 半月坚守者（连续15天打卡）
+        ProjectFinisher,       // 7: 项目收官者（参与项目圆满结束）
+        Streak30Days          // 8: 满月收官（连续30天打卡）
+    }
+
     // 项目信息结构体
     struct CoProject {
         string name;       // 项目名称
@@ -32,17 +45,24 @@ contract CoTime is ERC721, ReentrancyGuard {
     mapping(uint256 => CoProject) public projects; // 项目ID→信息
     uint256 public projectCounter; // 项目计数器
 
-    // NFT元数据URI（IPFS CID）
+    mapping(uint256 => bool) public isProjectFinished; // 项目ID → 是否已结束
+    mapping(uint256 => uint256) public projectStartTime; // 项目ID → 创建时间戳
+
+    // 用户已铸造的 NFT 类型（防止重复铸造）
+    mapping(address => mapping(NftType => bool)) public userMintedNfts;
+
+    mapping(uint256 => NftType) public tokenIdToNftType; // tokenId → NFT 类型
+
     string[] public nftUris = [
-        "ipfs://bafybeibi4j4idqadkg6idbg3hunlm6c62fvtn3jxqceo74gdhouu6fw2aa", // 占位
-        "ipfs://bafybeib4jpn24mggrg4u4utihqppeqvtrs44xvr6uwt5oxkt4khp3obd4q",
-        "ipfs://bafybeia32s57qcmoorqfr5mkipsvzez3qvx75hpwd4jnujaiymq4ulqlze", 
-        "ipfs://bafybeigotfdpsfmat7emiffbaiigdcdehhux66vtqtr6zchdinxh4rlyoi"
-        "ipfs://bafybeiemwgcu4e6bw4xjggtojfl3bx47gxtsp5wgftr72qclytwtvoeyfe"
-        "ipfs://bafybeiflulj37qol5yaqui5waezhnrjh3aibashej7gmn23b2oswtrfthm"
-        "ipfs://bafybeib4jpn24mggrg4u4utihqppeqvtrs44xvr6uwt5oxkt4khp3obd4q"
-        "ipfs://bafybeicqig2dsub2er2kxtmnwoboqrwchslaz7ucvtgijbagieqvyu45xm"
-        "ipfs://bafybeia32s57qcmoorqfr5mkipsvzez3qvx75hpwd4jnujaiymq4ulqlze"
+        "", // 0: None（占位）
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/ProjectCreator.json",      // 1: ProjectCreator
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/FirstCheckIn.json",        // 2: FirstCheckIn
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/Streak3Days.json",         // 3: Streak3Days
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/WeekFullAttendance.json",   // 4: WeekFullAttendance
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/MilestoneBreaker.json",    // 5: MilestoneBreaker
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/Streak15Days.json",        // 6: Streak15Days
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/ProjectFinisher.json",     // 7: ProjectFinisher
+        "ipfs://bafybeidlpmlzywos34n3l4kczbhdkwrgktl6kjgn5ruicwnin7hfki2j7m/Streak30Days.json"        // 8: Streak30Days
     ];
 
     // 项目创建事件
@@ -52,7 +72,7 @@ contract CoTime is ERC721, ReentrancyGuard {
     // 打卡成功事件
     event CheckInSuccess(uint256 indexed projectId,address indexed user,string proofHash,uint256 streakDays);
     // NFT铸造事件
-    event NftMinted(uint256 indexed projectId,address indexed user,uint256 indexed tokenId,uint256 level);
+    event NftMinted(address indexed user,uint256 indexed tokenId,uint256 level);
     // 项目结束事件
     event ProjectFinished(uint256 indexed projectId,uint256 finishTime);
 
@@ -83,7 +103,11 @@ contract CoTime is ERC721, ReentrancyGuard {
 
         emit ProjectCreated(projectCounter, msg.sender, _name, _theme, _allStreakDays, _maxMembers);
         userCreatedProjects[msg.sender].push(projectCounter);
+        projectStartTime[projectCounter] = block.timestamp; // 记录创建时间
         projectCounter++;
+        if (!userMintedNfts[msg.sender][NftType.ProjectCreator]) {
+            mintNft(msg.sender, NftType.ProjectCreator);
+        }
     }
 
     // 加入项目
@@ -107,6 +131,7 @@ contract CoTime is ERC721, ReentrancyGuard {
         uint256 _timestamp,         // 打卡时间戳（前端生成）
         bytes calldata _signature    // 钱包签名
     ) external nonReentrant {
+        require(!isProjectFinished[_projectId], "Project already finished");
         // 1. 验证项目存在且用户是成员
         require(_projectId < projectCounter, "Project not exist");
         
@@ -125,6 +150,12 @@ contract CoTime is ERC721, ReentrancyGuard {
         if(!globalUserCheckInRecord[msg.sender][today]){
             globalUserCheckInRecord[msg.sender][today] = true;
             userGlobalTotalCheckInDays[msg.sender]++;
+            if (userGlobalTotalCheckInDays[msg.sender] == 1 && !userMintedNfts[msg.sender][NftType.FirstCheckIn]) {
+                mintNft(msg.sender, NftType.FirstCheckIn);
+            }
+            if (userGlobalTotalCheckInDays[msg.sender] >= 30 && !userMintedNfts[msg.sender][NftType.MilestoneBreaker]) {
+                mintNft(msg.sender, NftType.MilestoneBreaker);
+            }
         }
         require(!userCheckInRecord[msg.sender][_projectId][today], "Already checked in today");
 
@@ -177,19 +208,42 @@ contract CoTime is ERC721, ReentrancyGuard {
         }
     }
 
-    // 根据连续天数发NFT
-    function issueNftByStreak(address _user, uint256 _projectId) internal {
-        uint256 streak = checkInStreak[_user][_projectId];
-        uint256 currentLevel = userNftLevel[_user][_projectId];
+    function finishProject(uint256 _projectId) external {
+        CoProject storage project = projects[_projectId];
+        require(project.initiator == msg.sender, "Not initiator");
+        require(!isProjectFinished[_projectId], "Already finished");
+        require(
+            block.timestamp >= projectStartTime[_projectId] + project.allStreakDays * 86400,
+            "Project duration not reached"
+        );
 
-        if (streak >= 3 && currentLevel < 1) {
-            mintNft(_user, _projectId, 1);
-        } else if (streak >= 7 && currentLevel < 2) {
-            mintNft(_user, _projectId, 2);
-        } else if (streak >= 10 && currentLevel < 3) {
-            mintNft(_user, _projectId, 3);
+        isProjectFinished[_projectId] = true;
+        emit ProjectFinished(_projectId, block.timestamp);
+
+        if (!userMintedNfts[msg.sender][NftType.ProjectFinisher]) {
+            uint256 tokenId = _tokenIdCounter++;
+            _safeMint(msg.sender, tokenId);
+            userMintedNfts[msg.sender][NftType.ProjectFinisher] = true;
+            emit NftMinted( msg.sender, tokenId, 8); // 8 = ProjectFinisher
         }
     }
+
+    function issueNftByStreak(address _user, uint256 _projectId) internal {
+        uint256 streak = checkInStreak[_user][_projectId];
+        if (streak >= 3 && !userMintedNfts[_user][NftType.Streak3Days]) {
+            mintNft(_user, NftType.Streak3Days);
+        }
+        if (streak >= 7 && !userMintedNfts[_user][NftType.WeekFullAttendance]) {
+            mintNft(_user, NftType.WeekFullAttendance);
+        }
+        if (streak >= 15 && !userMintedNfts[_user][NftType.Streak15Days]) {
+            mintNft(_user, NftType.Streak15Days);
+        }
+        if (streak >= 30 && !userMintedNfts[_user][NftType.Streak30Days]) {
+            mintNft(_user, NftType.Streak30Days);
+        }
+    }
+
 
     // 铸造NFT
     function mintNft(address _to, uint256 _projectId, uint256 _level) internal {
@@ -198,20 +252,21 @@ contract CoTime is ERC721, ReentrancyGuard {
         _safeMint(_to, tokenId);
         userNftLevel[_to][_projectId] = _level;
 
-        emit NftMinted(_projectId, _to, tokenId, _level);
+        emit NftMinted(_to, tokenId, _level);
     }
 
-    // 重写tokenURI
     function tokenURI(uint256 _tokenId) public view override returns (string memory) {
-        address owner = ownerOf(_tokenId);
-        // 简化：取用户最高等级NFT的URI（实际可加映射关联tokenId和项目ID）
-        uint256 maxLevel = 0;
-        for (uint256 i = 0; i < projectCounter; i++) {
-            if (userNftLevel[owner][i] > maxLevel) {
-                maxLevel = userNftLevel[owner][i];
-            }
-        }
-        return nftUris[maxLevel];
+        NftType nftType = tokenIdToNftType[_tokenId];
+        return nftUris[uint256(nftType)];
+    }
+
+    function mintNft(address _to, NftType _nftType) internal {
+        uint256 tokenId = _tokenIdCounter;
+        _tokenIdCounter++;
+        _safeMint(_to, tokenId);
+        tokenIdToNftType[tokenId] = _nftType; // 记录 tokenId 对应的 NFT 类型
+        userMintedNfts[_to][_nftType] = true; // 标记为已铸造
+        emit NftMinted(_to, tokenId, uint256(_nftType));
     }
 
     function getProject(uint256 _projectId) external view returns (
@@ -246,7 +301,6 @@ contract CoTime is ERC721, ReentrancyGuard {
         }
         return result;
     }
-
 
     function isMemberOfProject(uint256 _projectId, address _user) public view returns (bool) {
         return projects[_projectId].isMember[_user];
