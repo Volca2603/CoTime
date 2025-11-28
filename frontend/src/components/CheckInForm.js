@@ -24,24 +24,49 @@ const CheckInForm = ({ projectId }) => {
 
   const checkIn = async () => {
     if (!signer || !file) return alert("请连接钱包并上传凭证");
-    // 1. 上传文件到IPFS
-    const proofHash = await uploadToPinata(file);
-    // 2. 生成签名
-    const { timestamp, signature } = await getSignature(proofHash);
-    // 3. 调用合约打卡
-    const contract = getContract(signer);
     try {
+      // 1. 上传文件到IPFS
+      const proofHash = await uploadToPinata(file);
+      // 2. 生成签名
+      const { timestamp, signature } = await getSignature(proofHash);
+      // 3. 调用合约打卡
+      const contract = getContract(signer);
+      
       const tx = await contract.checkIn(
         projectId,
         proofHash,
         timestamp,
         signature
       );
-      await tx.wait();
-      alert("打卡成功！");
+      
+      // 等待交易确认并获取交易回执
+      const receipt = await tx.wait();
+      console.log('打卡交易回执:', receipt);
+      
+      // 尝试从事件中获取打卡成功信息
+      let streakDays = 1; // 默认值
+
+      contract.on("CheckInSuccess", (projectId, member, streakDays, event) => {
+        console.log("捕获到CheckInSuccess事件:", {
+          projectId,
+          member,
+          streakDays,
+          event
+        });
+        // 提取projectId
+        projectId = event.args.projectId.toString();
+        console.log("从事件中提取到的projectId:", projectId);
+        if (projectId === projectId) {
+          alert(`打卡成功！连续打卡天数: ${streakDays}`);
+        }
+      });
+      
+      // 重置文件选择
+      setFile(null);
+      
     } catch (err) {
-      console.error(err);
-      alert("打卡失败：" + err.reason);
+      console.error('打卡失败:', err);
+      alert("打卡失败：" + (err.reason || '未知错误'));
     }
   };
 
