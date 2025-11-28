@@ -29,16 +29,20 @@ contract CoTime is ERC721, ReentrancyGuard {
     mapping(address => mapping(uint256 => bool)) public globalUserCheckInRecord;  
     mapping(address => uint256) public userGlobalTotalCheckInDays;               
     
-    
     mapping(uint256 => CoProject) public projects; // 项目ID→信息
     uint256 public projectCounter; // 项目计数器
 
     // NFT元数据URI（IPFS CID）
     string[] public nftUris = [
-        "", // 占位
-        "ipfs://QmXXX.../normal.json", // 元气徽章
-        "ipfs://QmXXX.../rare.json",  // 闪耀徽章
-        "ipfs://QmXXX.../special.json"// 限定徽章
+        "ipfs://bafybeibi4j4idqadkg6idbg3hunlm6c62fvtn3jxqceo74gdhouu6fw2aa", // 占位
+        "ipfs://bafybeib4jpn24mggrg4u4utihqppeqvtrs44xvr6uwt5oxkt4khp3obd4q",
+        "ipfs://bafybeia32s57qcmoorqfr5mkipsvzez3qvx75hpwd4jnujaiymq4ulqlze", 
+        "ipfs://bafybeigotfdpsfmat7emiffbaiigdcdehhux66vtqtr6zchdinxh4rlyoi"
+        "ipfs://bafybeiemwgcu4e6bw4xjggtojfl3bx47gxtsp5wgftr72qclytwtvoeyfe"
+        "ipfs://bafybeiflulj37qol5yaqui5waezhnrjh3aibashej7gmn23b2oswtrfthm"
+        "ipfs://bafybeib4jpn24mggrg4u4utihqppeqvtrs44xvr6uwt5oxkt4khp3obd4q"
+        "ipfs://bafybeicqig2dsub2er2kxtmnwoboqrwchslaz7ucvtgijbagieqvyu45xm"
+        "ipfs://bafybeia32s57qcmoorqfr5mkipsvzez3qvx75hpwd4jnujaiymq4ulqlze"
     ];
 
     // 项目创建事件
@@ -230,10 +234,9 @@ contract CoTime is ERC721, ReentrancyGuard {
     }
 
     // 分页获取用户创建的项目 ID 列表
-    function getMyProjects(uint256 _startIndex, uint256 _limit ,address _user) external view returns (uint256[] memory) {
+    function getMyProjects(uint256 _startIndex, uint256 _limit) external view returns (uint256[] memory) {
         require(_limit <= 50, "Max 50 projects per query");  // 防止 Gas 超限
-        require(_user != address(0),"Invalid address");
-        uint256[] memory projectIds = userCreatedProjects[_user];
+        uint256[] memory projectIds = userCreatedProjects[msg.sender];
         uint256 endIndex = _startIndex + _limit;
         if (endIndex > projectIds.length) endIndex = projectIds.length;
 
@@ -252,8 +255,9 @@ contract CoTime is ERC721, ReentrancyGuard {
     function getTotalCheckInDays(uint256 _projectId) external view returns (uint256) {
         return userGlobalTotalCheckInDays[msg.sender];
     }
-    // 提取合约资金（可选）
-    // function withdrawFunds() external onlyOwner {
-    //     payable(owner()).transfer(address(this).balance);
-    // }
+
+    function getUserStreak(address _user, uint256 _projectId) external view returns (uint256) {
+        return checkInStreak[_user][_projectId];
+    }
+
 }
