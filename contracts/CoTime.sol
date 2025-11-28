@@ -8,8 +8,8 @@ contract CoTime is ERC721, ReentrancyGuard {
     uint256 private _tokenIdCounter = 1;
     // 项目信息结构体
     struct CoProject {
-        bytes32 name;       // 项目名称
-        bytes32 theme;      // 打卡主题
+        string name;       // 项目名称
+        string theme;      // 打卡主题
         address initiator; // 发起人
         uint16 allStreakDays;  // 总打卡天数
         uint8 maxMembers;       // 成员上限
@@ -38,7 +38,7 @@ contract CoTime is ERC721, ReentrancyGuard {
     ];
 
     // 项目创建事件
-    event ProjectCreated(uint256 indexed projectId,address indexed initiator,bytes32 name,bytes32 theme,uint16 allStreakDays,uint8 maxMembers);
+    event ProjectCreated(uint256 indexed projectId,address indexed initiator,string name,string theme,uint16 allStreakDays,uint8 maxMembers);
     // 加入项目事件
     event ProjectJoined(uint256 indexed projectId,address indexed member);
     // 打卡成功事件
@@ -48,12 +48,14 @@ contract CoTime is ERC721, ReentrancyGuard {
     // 项目结束事件
     event ProjectFinished(uint256 indexed projectId,uint256 finishTime);
 
-    constructor() ERC721("CoTime", "CT") {}
+    constructor() ERC721("CoTime", "CT") {
+        
+    }
 
     // 发布项目
     function publishProject(
-        bytes32  _name, 
-        bytes32  _theme, 
+        string memory  _name, 
+        string memory  _theme, 
         uint16 _allStreakDays,
         uint8 _maxMembers
     ) external {
@@ -70,7 +72,6 @@ contract CoTime is ERC721, ReentrancyGuard {
 
         // 标记发起人为成员（mapping 不能在构造中初始化，需单独赋值）
         newProject.isMember[msg.sender] = true;
-
 
         emit ProjectCreated(projectCounter, msg.sender, _name, _theme, _allStreakDays, _maxMembers);
         userCreatedProjects[msg.sender].push(projectCounter);
@@ -201,8 +202,8 @@ contract CoTime is ERC721, ReentrancyGuard {
     }
 
     function getProject(uint256 _projectId) external view returns (
-        bytes32 name,
-        bytes32 theme,
+        string memory name,
+        string memory theme,
         address initiator,
         uint16 allStreakDays,
         uint8 maxMembers,
