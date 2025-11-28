@@ -252,7 +252,7 @@ contract CoTime is ERC721, ReentrancyGuard {
         return projects[_projectId].isMember[_user];
     }
 
-    function getTotalCheckInDays(uint256 _projectId) external view returns (uint256) {
+    function getTotalCheckInDays() external view returns (uint256) {
         return userGlobalTotalCheckInDays[msg.sender];
     }
 
