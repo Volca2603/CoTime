@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const ProjectCard = ({ project, className }) => {
+const ProjectCard = ({ project, className, isInitiator, onFinishProject }) => {
   // 确保project对象存在
   if (!project) {
     return null;
@@ -27,6 +27,12 @@ const ProjectCard = ({ project, className }) => {
     return colors[hash % colors.length];
   };
 
+  const handleFinishClick = () => {
+    if (onFinishProject && project.id) {
+      onFinishProject(project.id);
+    }
+  };
+
   return (
     <div className={`transform hover:-translate-y-1 transition-all duration-300 bg-white rounded-xl shadow-md hover:shadow-lg border border-gray-100 overflow-hidden ${className}`}>
       <div className="p-5 pb-12 relative mb-3">
@@ -43,7 +49,15 @@ const ProjectCard = ({ project, className }) => {
           <span className="flex items-center gap-1">👤 {project.initiator || project.creator?.slice(0, 6)}...</span>
           <span className="flex items-center gap-1">👥 {project.memberCount || 0} / {project.maxMembers || 0} </span>
         </div>
-        <div className="absolute bottom-1 right-5">
+        <div className="absolute bottom-1 right-5 flex gap-2">
+          {isInitiator && (
+            <button 
+              onClick={handleFinishClick}
+              className="bg-red-100 text-red-600 inline-block whitespace-nowrap px-4 py-1.5 rounded-lg font-medium transition-all duration-300 hover:bg-red-200"
+            >
+              结束项目
+            </button>
+          )}
           <Link 
             to={`/project/${project.id}`} 
             className="btn-primary inline-block whitespace-nowrap px-5 py-1.5 rounded-lg font-medium transition-all duration-300 hover:font-bold hover:text-white"

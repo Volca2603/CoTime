@@ -2,7 +2,8 @@ import { useState, useContext } from 'react';
 import { Web3Context } from '../contexts/Web3Context';
 import { ethers } from 'ethers';
 
-const PublishProject = ({ onSuccess }) => {
+// 修改props接收，添加onClose参数
+const PublishProject = ({ onSuccess, onClose }) => {
   const { callWriteMethod } = useContext(Web3Context);
   const [formData, setFormData] = useState({
     name: '',
@@ -64,6 +65,10 @@ const PublishProject = ({ onSuccess }) => {
           maxMembers: '5' 
         });
         if (onSuccess) onSuccess();
+        // 成功后自动关闭弹窗
+        setTimeout(() => {
+          onClose(); // 直接调用，不需要额外检查
+        }, 1500);
       }
     } catch (err) {
       console.error('发布项目失败:', err);
@@ -74,8 +79,28 @@ const PublishProject = ({ onSuccess }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-[#e27d60] mb-6 text-center">发布新项目</h2>
+    <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl mx-auto relative">
+      {/* 添加relative类，使内部的absolute定位元素基于此容器 */}
+      
+      {/* 其他内容保持不变 */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-[#e27d60]">发布新项目</h2>
+        重写关闭按钮，使用更简单直接的实现
+        <button 
+          className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors z-10"
+          onClick={() => {
+            console.log('关闭按钮被点击'); // 添加调试日志
+            if (onClose) {
+              onClose();
+            }
+          }}
+          type="button"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          &times; {/* 使用HTML实体符号代替SVG，更简单可靠 */}
+        </button>
+        
+      </div>
       
       {error && (
         <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-4">
@@ -90,6 +115,7 @@ const PublishProject = ({ onSuccess }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 表单内容保持不变 */}
         <div>
           <label htmlFor="name" className="block text-gray-700 mb-2 font-medium">项目名称</label>
           <input

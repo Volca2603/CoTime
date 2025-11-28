@@ -2,17 +2,22 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Web3Context } from '../contexts/Web3Context';
 import ProjectCard from '../components/ProjectCard';
+import PublishProject from '../components/PublishProject'; // 导入发布项目组件
 
 const MyProjects = () => {
-  const { address, callReadMethod } = useContext(Web3Context);
+  const { address, callReadMethod, callWriteMethod, isConnected } = useContext(Web3Context);
   const [myProjects, setMyProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasMoreProjects, setHasMoreProjects] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const PROJECTS_PER_PAGE = 10; // 每页获取10个项目
-  
-  // 移到组件顶部，并使用已导入的useRef
+  const [hasMoreProjects, setHasMoreProjects] = useState(true);
+  const [finishingProject, setFinishingProject] = useState(null);
+  const [showPublishForm, setShowPublishForm] = useState(false); // 添加发布表单状态
+  // 保留一个isFetching声明即可
   const isFetching = useRef(false);
+  const PROJECTS_PER_PAGE = 10;
+  
+  // 删除重复的声明
+  // const isFetching = useRef(false);
 
   // 修复后的fetchMyProjects函数
   const fetchMyProjects = async (startIndex = 0, limit = PROJECTS_PER_PAGE) => {
@@ -107,6 +112,41 @@ const MyProjects = () => {
     }
   };
 
+  // 结束项目函数
+  const handleFinishProject = async (projectId) => {
+    try {
+      // 显示确认对话框
+      const confirmFinish = window.confirm(`确定要结束项目吗？结束后项目将无法继续打卡。`);
+      if (!confirmFinish) {
+        return;
+      }
+
+      setFinishingProject(projectId);
+      
+      // 调用合约的finishProject方法
+      const result = await callWriteMethod('finishProject', projectId);
+      
+      if (result.success) {
+        alert('项目已成功结束！');
+        // 刷新项目列表
+        fetchMyProjects(0, PROJECTS_PER_PAGE);
+      }
+    } catch (error) {
+      console.error('结束项目失败:', error);
+      
+      // 针对不同错误类型给出更具体的提示
+      if (error.message.includes('execution reverted')) {
+        alert('结束项目失败：合约执行被拒绝，可能是项目尚未达到结束时间或您不是项目发起人');
+      } else if (error.code === 'CALL_EXCEPTION') {
+        alert('结束项目失败：合约调用异常，请检查合约地址和ABI是否正确');
+      } else {
+        alert(`结束项目失败: ${error.message || '未知错误'}`);
+      }
+    } finally {
+      setFinishingProject(null);
+    }
+  };
+
   // 同时在useEffect中添加依赖数组优化
   useEffect(() => {
     // 添加防抖逻辑
@@ -144,6 +184,12 @@ const MyProjects = () => {
     );
   }
 
+  const handleProjectPublished = () => {
+    setShowPublishForm(false);
+    fetchMyProjects(0, PROJECTS_PER_PAGE); // 重新获取项目列表
+  };
+
+  // 修改空状态下的创建按钮
   return (
     <div className="min-h-screen bg-[#f9f4f0] py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -151,6 +197,7 @@ const MyProjects = () => {
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold text-[#e27d60] mb-2">我创建的项目</h2>
           <div className="w-24 h-1 bg-[#85cdca] mx-auto rounded-full"></div>
+          
         </div>
         
         {/* 加载状态 */}
@@ -169,12 +216,13 @@ const MyProjects = () => {
             </div>
             <h3 className="text-xl font-medium text-gray-800 mb-2">您还没有创建任何项目</h3>
             <p className="text-gray-600 mb-6">开始创建您的第一个项目，与朋友们一起坚持打卡吧！</p>
-            <a 
-              href="/" 
+            {/* 修改这里，不再使用href跳转，而是使用按钮触发 */}
+            <button 
+              onClick={() => setShowPublishForm(true)}
               className="inline-block bg-[#e27d60] hover:bg-[#d16b51] text-white py-2 px-6 rounded-full transition-all duration-300 transform hover:scale-105"
             >
               创建新项目
-            </a>
+            </button>
           </div>
         ) : (
           /* 项目列表 */
@@ -184,6 +232,8 @@ const MyProjects = () => {
                 <ProjectCard 
                   key={project.id} 
                   project={project} 
+                  isInitiator={project.isInitiator} // 添加这一行
+                  onFinishProject={handleFinishProject}
                   className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
                 />
               ))}
@@ -216,6 +266,24 @@ const MyProjects = () => {
               </div>
             )}
           </>
+        )}
+        
+        {/* 发布项目表单 */}
+        {showPublishForm && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowPublishForm(false)} // 点击背景关闭
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()} // 阻止事件冒泡到背景
+            >
+              <PublishProject 
+                onSuccess={handleProjectPublished}
+                onClose={() => setShowPublishForm(false)}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

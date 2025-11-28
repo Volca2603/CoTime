@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 // 确保这是最新部署的合约地址
-export const CONTRACT_ADDRESS = "0x2e8bD261Ca4fd43888Ba1aA7e30E10640164F68a";
+export const CONTRACT_ADDRESS = "0x9ea68526f5c49Cf98245b62528d0f1E321b63C0d";
 
 // 使用完整的JSON ABI格式，而不是简化的字符串格式
 export const CONTRACT_ABI = [

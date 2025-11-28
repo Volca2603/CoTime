@@ -8,11 +8,17 @@ const Home = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPublishForm, setShowPublishForm] = useState(false);
-  // 添加缺失的error状态定义
   const [error, setError] = useState(null);
 
   // 获取所有项目
   const fetchProjects = async () => {
+    // 检查钱包是否连接
+    if (!isConnected || !callReadMethod) {
+      setError('请先连接钱包');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
@@ -98,8 +104,14 @@ const Home = () => {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, [callReadMethod]);
+    // 只有当钱包连接且callReadMethod存在时才获取项目
+    if (isConnected && callReadMethod) {
+      fetchProjects();
+    } else {
+      setLoading(false);
+      setError(isConnected ? '合约方法未初始化' : '请先连接钱包');
+    }
+  }, [callReadMethod, isConnected]); // 添加isConnected作为依赖
 
   const handleProjectPublished = () => {
     setShowPublishForm(false);
