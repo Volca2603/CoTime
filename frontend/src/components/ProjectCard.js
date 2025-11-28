@@ -1,109 +1,57 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Web3Context } from '../contexts/Web3Context';
-import { getContract } from '../utils/contract';
-import { ethers } from 'ethers';
 
-const ProjectCard = ({ project }) => {
-  const { signer, address, isConnected } = useContext(Web3Context);
+const ProjectCard = ({ project, className }) => {
+  // 确保project对象存在
+  if (!project) {
+    return null;
+  }
+
+  // 直接使用字符串属性，不再需要解码
+  const name = project.name || '未命名项目';
+  const theme = project.theme || project.subject || '暂无主题'; // 兼容可能存在的旧数据
   
-  // 判断当前用户是否已加入项目
-  const isUserJoined = address && project.members ? project.members.includes(address) : false;
-  
-  // 判断项目是否已满
-  const isProjectFull = project.memberCount >= project.maxMembers;
-  
-  // 加入项目函数
-  const joinProject = async () => {
-    if (!isConnected || !signer) {
-      return alert('请先连接钱包');
-    }
-    
-    if (isUserJoined) {
-      return alert('您已加入该项目');
-    }
-    
-    if (isProjectFull) {
-      return alert('项目成员已满');
-    }
-    
-    try {
-      // 获取合约实例
-      const contract = getContract(signer);
-      
-      // 发送交易
-      const tx = await contract.joinProject(project.id);
-      
-      // 等待交易确认
-      console.log('正在等待交易确认...', { hash: tx.hash });
-      const receipt = await tx.wait();
-      let joinedMember = null;
-      // 尝试从事件中获取信息
-      contract.on("ProjectJoined", (projectId, member, event) => {
-        console.log("捕获到ProjectJoined事件:", {
-          projectId,
-          member,
-          event
-        });
-        // 提取projectId
-        projectId = event.args.projectId.toString();
-        joinedMember = event.args.member;
-        
-      });
-      if(joinedMember === address) {
-        alert(`您(${joinedMember.substring(0, 6)}...) ${joinedMember.substring(38)}已成功加入项目ID: ${projectId}`);
-      }
-      
-      // 刷新页面或更新项目数据
-      window.location.reload();
-      
-    } catch (error) {
-      console.error('加入项目失败:', error);
-      alert('加入失败: ' + (error.reason || '未知错误'));
-    }
+  // 根据主题文本生成简单的颜色标识
+  const getThemeColorClass = (themeText) => {
+    // 简单的哈希函数来生成颜色类
+    const hash = themeText.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = [
+      'bg-blue-100 text-blue-700',
+      'bg-purple-100 text-purple-700',
+      'bg-green-100 text-green-700',
+      'bg-orange-100 text-orange-700',
+      'bg-pink-100 text-pink-700',
+      'bg-teal-100 text-teal-700',
+      'bg-amber-100 text-amber-700',
+    ];
+    return colors[hash % colors.length];
   };
-  
+
   return (
-    <div className="project-card">
-      <h3>{project.name}</h3>
-      <p className="project-theme">{project.theme}</p>
-      <div className="project-info">
-        <div className="info-item">
-          <span>发起人：</span>
-          <span>{project.initiator.substring(0, 6)}...{project.initiator.substring(38)}</span>
+    <div className={`transform hover:-translate-y-1 transition-all duration-300 bg-white rounded-xl shadow-md hover:shadow-lg border border-gray-100 overflow-hidden ${className}`}>
+      <div className="p-5 pb-12 relative mb-3">
+        <h3 className="text-xl font-bold text-dark mb-2 relative inline-block group truncate max-w-full">
+          {name}
+          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-300 group-hover:w-full"></span>
+        </h3>
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getThemeColorClass(theme)}`}>
+            {theme}
+          </span>
         </div>
-        <div className="info-item">
-          <span>总打卡天数：</span>
-          <span>{project.days}天</span>
+        <div className="flex items-center text-sm text-text/70 space-x-4">
+          <span className="flex items-center gap-1">👤 {project.initiator || project.creator?.slice(0, 6)}...</span>
+          <span className="flex items-center gap-1">👥 {project.memberCount || 0} / {project.maxMembers || 0} </span>
         </div>
-        <div className="info-item">
-          <span>成员：</span>
-          <span>{project.memberCount??0}/{project.maxMembers}</span>
+        <div className="absolute bottom-1 right-5">
+          <Link 
+            to={`/project/${project.id}`} 
+            className="btn-primary inline-block whitespace-nowrap px-5 py-1.5 rounded-lg font-medium transition-all duration-300 hover:font-bold hover:text-white"
+          >
+            查看详情
+          </Link>
         </div>
       </div>
-      
-      {/* 加入项目按钮 */}
-      {!isUserJoined && !isProjectFull && (
-        <button 
-          onClick={joinProject} 
-          className="join-button"
-          disabled={!isConnected}
-        >
-          {isConnected ? '加入项目' : '请先连接钱包'}
-        </button>
-      )}
-      
-      {/* 已加入状态 */}
-      {isUserJoined && (
-        <div className="joined-status">您已加入该项目</div>
-      )}
-      
-      {/* 项目已满状态 */}
-      {isProjectFull && !isUserJoined && (
-        <div className="full-status">项目成员已满</div>
-      )}
-      
-      <Link to={`/project/${project.id}`} className="project-link">查看详情</Link>
     </div>
   );
 };
