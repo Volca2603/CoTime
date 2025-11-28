@@ -13,8 +13,11 @@ contract CoTime is ERC721, ReentrancyGuard {
         address initiator; // 发起人
         uint16 allStreakDays;  // 总打卡天数
         uint8 maxMembers;       // 成员上限
-        address[] members; // 参与成员
+        uint8 memberCount;          // 当前成员数量
+        mapping(address => bool) isMember;
     }
+
+    mapping(address => uint256[]) private userCreatedProjects;
 
     // 打卡记录：用户地址 → 项目ID → 打卡日期（时间戳）→ 是否已打卡
     mapping(address => mapping(uint256 => mapping(uint256 => bool))) public userCheckInRecord;
@@ -55,19 +58,22 @@ contract CoTime is ERC721, ReentrancyGuard {
         uint8 _maxMembers
     ) external {
         require(_maxMembers >= 1, "Min 1 member"); // 至少1人（发起人自己）
-        require(_maxMembers <= 255, "Max 255 members"); // 可选：限制最大上限，避免数组过大
-        projects[projectCounter] = CoProject({
-            name: _name,
-            theme: _theme,
-            initiator: msg.sender,
-            allStreakDays: _allStreakDays,
-            maxMembers: _maxMembers,
-            members: new address[](1)
-        });
-        projects[projectCounter].members[0] = msg.sender;
+        require(_maxMembers <= 255, "Max 255 members"); 
+         // 逐字段赋值，避免直接赋值整个结构体
+        CoProject storage newProject = projects[projectCounter];
+        newProject.name = _name;
+        newProject.theme = _theme;
+        newProject.initiator = msg.sender;
+        newProject.allStreakDays = _allStreakDays;
+        newProject.maxMembers = _maxMembers;
+        newProject.memberCount = 1;  // 发起人自动加入
+
+        // 标记发起人为成员（mapping 不能在构造中初始化，需单独赋值）
+        newProject.isMember[msg.sender] = true;
+
 
         emit ProjectCreated(projectCounter, msg.sender, _name, _theme, _allStreakDays, _maxMembers);
-
+        userCreatedProjects[msg.sender].push(projectCounter);
         projectCounter++;
     }
 
@@ -76,9 +82,10 @@ contract CoTime is ERC721, ReentrancyGuard {
         require(_projectId < projectCounter, "Project not exist");
         CoProject storage project = projects[_projectId];
         // 用结构体的maxMembers判断，而非写死数字
-        require(project.members.length < project.maxMembers, "Team is full");
+        require(project.memberCount < project.maxMembers, "Team is full");
     
-        project.members.push(msg.sender);
+        project.isMember[msg.sender] = true;
+        project.memberCount++;
 
         emit ProjectJoined(_projectId, msg.sender);
     }
@@ -92,15 +99,8 @@ contract CoTime is ERC721, ReentrancyGuard {
     ) external nonReentrant {
         // 1. 验证项目存在且用户是成员
         require(_projectId < projectCounter, "Project not exist");
-        bool isMember = false;
-        address[] memory members = projects[_projectId].members;
-        for (uint256 i = 0; i < members.length; i++) {
-            if (members[i] == msg.sender) {
-                isMember = true;
-                break;
-            }
-        }
-        require(isMember, "Not project member");
+        
+        require(projects[_projectId].isMember[msg.sender] == true, "Not project member");
 
         // 2. 验证签名（防止伪造打卡）
         bytes32 messageHash = getMessageHash(_projectId, _proofHash, _timestamp, msg.sender);
@@ -200,6 +200,43 @@ contract CoTime is ERC721, ReentrancyGuard {
         return nftUris[maxLevel];
     }
 
+    function getProject(uint256 _projectId) external view returns (
+        bytes32 name,
+        bytes32 theme,
+        address initiator,
+        uint16 allStreakDays,
+        uint8 maxMembers,
+        uint8 memberCount
+    ) {
+        CoProject storage project = projects[_projectId];
+        return (
+            project.name,
+            project.theme,
+            project.initiator,
+            project.allStreakDays,
+            project.maxMembers,
+            project.memberCount
+        );
+    }
+
+    // 分页获取用户创建的项目 ID 列表
+    function getMyProjects(uint256 _startIndex, uint256 _limit) external view returns (uint256[] memory) {
+        require(_limit <= 50, "Max 50 projects per query");  // 防止 Gas 超限
+        uint256[] memory projectIds = userCreatedProjects[msg.sender];
+        uint256 endIndex = _startIndex + _limit;
+        if (endIndex > projectIds.length) endIndex = projectIds.length;
+
+        uint256[] memory result = new uint256[](endIndex - _startIndex);
+        for (uint256 i = _startIndex; i < endIndex; i++) {
+            result[i - _startIndex] = projectIds[i];
+        }
+        return result;
+    }
+
+
+    function isMemberOfProject(uint256 _projectId) public view returns (bool) {
+        return projects[_projectId].isMember[msg.sender];
+    }
     // 提取合约资金（可选）
     // function withdrawFunds() external onlyOwner {
     //     payable(owner()).transfer(address(this).balance);
