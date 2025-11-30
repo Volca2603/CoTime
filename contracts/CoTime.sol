@@ -28,6 +28,8 @@ contract CoTime is ERC721, ReentrancyGuard {
         uint8 maxMembers;       // 成员上限
         uint8 memberCount;          // 当前成员数量
         mapping(address => bool) isMember;
+        bool isProjectFinished;
+        uint256 projectStartTime;
     }
 
     mapping(address => uint256[]) private userCreatedProjects;
@@ -45,8 +47,8 @@ contract CoTime is ERC721, ReentrancyGuard {
     mapping(uint256 => CoProject) public projects; // 项目ID→信息
     uint256 public projectCounter; // 项目计数器
 
-    mapping(uint256 => bool) public isProjectFinished; // 项目ID → 是否已结束
-    mapping(uint256 => uint256) public projectStartTime; // 项目ID → 创建时间戳
+    // mapping(uint256 => bool) public isProjectFinished; // 项目ID → 是否已结束
+    // mapping(uint256 => uint256) public projectStartTime; // 项目ID → 创建时间戳
 
     // 用户已铸造的 NFT 类型（防止重复铸造）
     mapping(address => mapping(NftType => bool)) public userMintedNfts;
@@ -97,13 +99,15 @@ contract CoTime is ERC721, ReentrancyGuard {
         newProject.allStreakDays = _allStreakDays;
         newProject.maxMembers = _maxMembers;
         newProject.memberCount = 1;  // 发起人自动加入
+        newProject.isProjectFinished = false;
+        newProject.projectStartTime = block.timestamp;
 
         // 标记发起人为成员（mapping 不能在构造中初始化，需单独赋值）
         newProject.isMember[msg.sender] = true;
 
         emit ProjectCreated(projectCounter, msg.sender, _name, _theme, _allStreakDays, _maxMembers);
         userCreatedProjects[msg.sender].push(projectCounter);
-        projectStartTime[projectCounter] = block.timestamp; // 记录创建时间
+        // projectStartTime[projectCounter] = block.timestamp; // 记录创建时间
         projectCounter++;
         if (!userMintedNfts[msg.sender][NftType.ProjectCreator]) {
             mintNft(msg.sender, NftType.ProjectCreator);
@@ -131,7 +135,7 @@ contract CoTime is ERC721, ReentrancyGuard {
         uint256 _timestamp,         // 打卡时间戳（前端生成）
         bytes calldata _signature    // 钱包签名
     ) external nonReentrant {
-        require(!isProjectFinished[_projectId], "Project already finished");
+        require(projects[_projectId].isProjectFinished, "Project already finished");
         // 1. 验证项目存在且用户是成员
         require(_projectId < projectCounter, "Project not exist");
         
@@ -211,13 +215,13 @@ contract CoTime is ERC721, ReentrancyGuard {
     function finishProject(uint256 _projectId) external {
         CoProject storage project = projects[_projectId];
         require(project.initiator == msg.sender, "Not initiator");
-        require(!isProjectFinished[_projectId], "Already finished");
+        require(project.isProjectFinished, "Already finished");
         require(
-            block.timestamp >= projectStartTime[_projectId] + project.allStreakDays * 86400,
+            block.timestamp >= project.projectStartTime + project.allStreakDays * 86400,
             "Project duration not reached"
         );
 
-        isProjectFinished[_projectId] = true;
+        project.isProjectFinished = true;
         emit ProjectFinished(_projectId, block.timestamp);
 
         if (!userMintedNfts[msg.sender][NftType.ProjectFinisher]) {
@@ -275,7 +279,9 @@ contract CoTime is ERC721, ReentrancyGuard {
         address initiator,
         uint16 allStreakDays,
         uint8 maxMembers,
-        uint8 memberCount
+        uint8 memberCount,
+        bool isProjectFinished,
+        uint256 projectStartTime
     ) {
         CoProject storage project = projects[_projectId];
         return (
@@ -284,7 +290,9 @@ contract CoTime is ERC721, ReentrancyGuard {
             project.initiator,
             project.allStreakDays,
             project.maxMembers,
-            project.memberCount
+            project.memberCount,
+            project.isProjectFinished,
+            projectStartTime
         );
     }
 
