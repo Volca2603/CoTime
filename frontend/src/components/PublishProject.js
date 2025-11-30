@@ -1,183 +1,194 @@
 import { useState, useContext } from 'react';
 import { Web3Context } from '../contexts/Web3Context';
-import { getContract } from '../utils/contract';
 import { ethers } from 'ethers';
 
-const PublishProject = () => {
-  const { signer, provider, isConnected } = useContext(Web3Context);
-  const [name, setName] = useState("");
-  const [theme, setTheme] = useState("");
-  const [days, setDays] = useState(30);
-  const [maxMembers, setMaxMembers] = useState(3);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmitTime, setLastSubmitTime] = useState(0);
-  
-  const DEBOUNCE_DELAY = 2000; // 2秒防抖
+// 修改props接收，添加onClose参数
+const PublishProject = ({ onSuccess, onClose }) => {
+  const { callWriteMethod } = useContext(Web3Context);
+  const [formData, setFormData] = useState({
+    name: '',
+    theme: '',
+    allStreakDays: '7', // 默认7天
+    maxMembers: '5'     // 默认5人
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  const publish = async () => {
-    // 防抖处理，防止快速点击多次提交
-    const now = Date.now();
-    if (now - lastSubmitTime < DEBOUNCE_DELAY) {
-      console.log("提交过于频繁，请稍后再试");
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess(false);
+
+    // 验证表单
+    if (!formData.name || !formData.theme) {
+      setError('请填写项目名称和主题');
       return;
     }
-    
-    // 基本验证
-    if (!isConnected || !signer || !provider) {
-      return alert("请连接钱包");
+
+    const streakDays = parseInt(formData.allStreakDays);
+    const maxMembersCount = parseInt(formData.maxMembers);
+
+    if (isNaN(streakDays) || streakDays < 1 || streakDays > 365) {
+      setError('打卡天数必须在1-365天之间');
+      return;
     }
-    
-    if (!name.trim()) return alert("请输入项目名称");
-    if (!theme.trim()) return alert("请输入打卡主题");
-    if (name.length > 16) return alert("项目名称不能超过16个字符");
-    if (isSubmitting) return;
-    
+
+    if (isNaN(maxMembersCount) || maxMembersCount < 1 || maxMembersCount > 255) {
+      setError('成员上限必须在1-255人之间');
+      return;
+    }
+
     try {
-      setIsSubmitting(true);
-      setLastSubmitTime(now);
-      
-      // 1. 验证网络连接
-      try {
-        const blockNumber = await provider.getBlockNumber();
-        console.log("网络连接正常，当前区块高度:", blockNumber);
-      } catch (networkErr) {
-        alert("无法连接到区块链网络，请检查网络连接");
-        return;
-      }
-      
-      // 2. 获取合约实例
-      const contract = getContract(signer);
-      console.log("合约实例创建成功");
-      
-      // 3. 转换字符串为bytes32
-      const nameBytes32 = ethers.encodeBytes32String(name);
-      const themeBytes32 = ethers.encodeBytes32String(theme);
-      
-      console.log("准备发布项目:", {
-        name, theme, days, maxMembers,
-        nameBytes32,
-        themeBytes32,
-        daysType: typeof days,
-        maxMembersType: typeof maxMembers
-      });
-      
-      // 4. 发送交易，让ethers.js自动处理gas
-      console.log("正在发送交易，让ethers.js自动估算gas...");
-      const tx = await contract.publishProject(
-        nameBytes32,
-        themeBytes32,
-        days,
-        maxMembers
+      setLoading(true);
+    
+      // 调用合约发布项目，使用正确的参数
+      const result = await callWriteMethod(
+        'publishProject',
+        formData.name,          // 项目名称(string)
+        formData.theme,         // 打卡主题(string)
+        streakDays,             // 总打卡天数(uint16)
+        maxMembersCount         // 成员上限(uint8)
       );
-      
-      console.log("交易已提交，等待确认...", {
-        hash: tx.hash,
-        from: tx.from,
-        to: tx.to
-      });
-      
-      // 5. 等待交易确认
-      console.log("等待交易被区块链确认...");
-      const receipt = await tx.wait();
-      console.log("交易确认成功:", {
-        status: receipt.status,
-        blockNumber: receipt.blockNumber,
-        transactionHash: receipt.transactionHash
-      });
-      let projectId = null;
-      let projectName = null;
-      contract.on("ProjectCreated", (projectId, name, theme, days, maxMembers, event) => {
-        console.log("捕获到ProjectCreated事件:", {
-          projectId,
-          name: ethers.decodeBytes32String(name),
-          theme: ethers.decodeBytes32String(theme),
-          days,
-          maxMembers,
-          event
+
+      if (result.success) {
+        setSuccess(true);
+        setFormData({ 
+          name: '', 
+          theme: '', 
+          allStreakDays: '7', 
+          maxMembers: '5' 
         });
-        // 提取projectId
-        projectId = event.args.projectId.toString();
-        projectName = ethers.decodeBytes32String(event.args.name); 
-      });
-      console.log("从事件中提取到的projectId:", projectId);
-      if (projectId) {
-          alert(`项目 ${projectName} 发布成功！项目ID: ${projectId}`);
-      } else {
-          alert(`项目 ${projectName} 发布成功！但无法获取项目ID，请检查交易记录`);
-          console.warn("无法从交易回执中提取projectId");
+        if (onSuccess) onSuccess();
+        // 成功后自动关闭弹窗
+        setTimeout(() => {
+          onClose(); // 直接调用，不需要额外检查
+        }, 1500);
       }
-      
-      // 重置表单
-      setName("");
-      setTheme("");
-      setDays(30);
-      setMaxMembers(3);
-      
     } catch (err) {
-      console.error("发布项目失败详细错误:", err);
-      
-      // 详细的错误处理
-      let errorMessage = "发布失败: ";
-      
-      if (err.code === -32603) {
-        errorMessage += "节点处理错误，请检查网络状态";
-      } else if (err.code === -32000 || err.code === -32003) {
-        errorMessage += "insufficient funds" in err.toString().toLowerCase() ? 
-          "账户余额不足" : 
-          "网络错误，请检查连接";
-      } else if (err.reason) {
-        errorMessage += err.reason;
-      } else if (err.error?.message) {
-        errorMessage += err.error.message;
-      } else if (err.message) {
-        errorMessage += err.message;
-      } else if (err.toString().includes('aborted')) {
-        errorMessage += "交易被中断，请重试";
-      } else {
-        errorMessage += "未知错误，请检查控制台日志";
-      }
-      
-      alert(errorMessage);
+      console.error('发布项目失败:', err);
+      setError('发布项目失败: ' + (err.message || '未知错误'));
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="publish-project">
-      <h3>发布共学项目</h3>
-      <input
-        type="text"
-        placeholder="项目名称（最多16字）"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        maxLength={16}
-      />
-      <input
-        type="text"
-        placeholder="打卡主题"
-        value={theme}
-        onChange={(e) => setTheme(e.target.value)}
-      />
-      <input
-        type="number"
-        placeholder="总打卡天数"
-        value={days}
-        onChange={(e) => setDays(parseInt(e.target.value) || 30)}
-        min={1}
-        max={365}
-      />
-      <input
-        type="number"
-        placeholder="最大成员数"
-        value={maxMembers}
-        onChange={(e) => setMaxMembers(parseInt(e.target.value) || 3)}
-        min={1}
-        max={255}
-      />
-      <button onClick={publish} disabled={isSubmitting || !isConnected}>
-        {isSubmitting ? "发布中..." : "发布"}
-      </button>
+    <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl mx-auto relative">
+      {/* 添加relative类，使内部的absolute定位元素基于此容器 */}
+      
+      {/* 其他内容保持不变 */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-[#e27d60]">发布新项目</h2>
+        重写关闭按钮，使用更简单直接的实现
+        <button 
+          className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors z-10"
+          onClick={() => {
+            console.log('关闭按钮被点击'); // 添加调试日志
+            if (onClose) {
+              onClose();
+            }
+          }}
+          type="button"
+          style={{ cursor: 'pointer', outline: 'none' }}
+        >
+          &times; {/* 使用HTML实体符号代替SVG，更简单可靠 */}
+        </button>
+        
+      </div>
+      
+      {error && (
+        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-4">
+          项目发布成功！
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 表单内容保持不变 */}
+        <div>
+          <label htmlFor="name" className="block text-gray-700 mb-2 font-medium">项目名称</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="输入项目名称"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e27d60] focus:border-transparent transition-all"
+            required
+            maxLength={32} // bytes32限制
+          />
+        </div>
+
+        <div>
+          <label htmlFor="theme" className="block text-gray-700 mb-2 font-medium">打卡主题</label>
+          <input
+            type="text"
+            id="theme"
+            name="theme"
+            value={formData.theme}
+            onChange={handleChange}
+            placeholder="例如：每日阅读、运动打卡"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e27d60] focus:border-transparent transition-all"
+            required
+            maxLength={32} // bytes32限制
+          />
+        </div>
+
+        <div>
+          <label htmlFor="allStreakDays" className="block text-gray-700 mb-2 font-medium">总打卡天数</label>
+          <input
+            type="number"
+            id="allStreakDays"
+            name="allStreakDays"
+            value={formData.allStreakDays}
+            onChange={handleChange}
+            min="1"
+            max="365"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85cdca] focus:border-transparent transition-all"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="maxMembers" className="block text-gray-700 mb-2 font-medium">成员上限</label>
+          <input
+            type="number"
+            id="maxMembers"
+            name="maxMembers"
+            value={formData.maxMembers}
+            onChange={handleChange}
+            min="1"
+            max="255"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85cdca] focus:border-transparent transition-all"
+            required
+          />
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`px-8 py-3 rounded-full transition-all duration-300 ${loading
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-[#e27d60] hover:bg-[#d16b51] text-white hover:shadow-md transform hover:scale-105'}
+            `}
+          >
+            {loading ? '发布中...' : '发布项目'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

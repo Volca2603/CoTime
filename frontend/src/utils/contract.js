@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 // 确保这是最新部署的合约地址
-export const CONTRACT_ADDRESS = "0xedA82ee71E56c448bEe400f4097cF9383735E30C";
+export const CONTRACT_ADDRESS = "0x9ea68526f5c49Cf98245b62528d0f1E321b63C0d";
 
 // 使用完整的JSON ABI格式，而不是简化的字符串格式
 export const CONTRACT_ABI = [
@@ -248,6 +248,19 @@ export const CONTRACT_ABI = [
 				"type": "uint256"
 			}
 		],
+		"name": "finishProject",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_projectId",
+				"type": "uint256"
+			}
+		],
 		"name": "joinProject",
 		"outputs": [],
 		"stateMutability": "nonpayable",
@@ -256,12 +269,6 @@ export const CONTRACT_ABI = [
 	{
 		"anonymous": false,
 		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "projectId",
-				"type": "uint256"
-			},
 			{
 				"indexed": true,
 				"internalType": "address",
@@ -301,15 +308,15 @@ export const CONTRACT_ABI = [
 			},
 			{
 				"indexed": false,
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "name",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
 				"indexed": false,
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "theme",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
 				"indexed": false,
@@ -368,14 +375,14 @@ export const CONTRACT_ABI = [
 	{
 		"inputs": [
 			{
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "_name",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "_theme",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
 				"internalType": "uint16",
@@ -628,6 +635,135 @@ export const CONTRACT_ABI = [
 	{
 		"inputs": [
 			{
+				"internalType": "uint256",
+				"name": "_startIndex",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_limit",
+				"type": "uint256"
+			}
+		],
+		"name": "getMyProjects",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_projectId",
+				"type": "uint256"
+			}
+		],
+		"name": "getProject",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "theme",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "initiator",
+				"type": "address"
+			},
+			{
+				"internalType": "uint16",
+				"name": "allStreakDays",
+				"type": "uint16"
+			},
+			{
+				"internalType": "uint8",
+				"name": "maxMembers",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "memberCount",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTotalCheckInDays",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_projectId",
+				"type": "uint256"
+			}
+		],
+		"name": "getUserStreak",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "globalUserCheckInRecord",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "address",
 				"name": "owner",
 				"type": "address"
@@ -639,6 +775,49 @@ export const CONTRACT_ABI = [
 			}
 		],
 		"name": "isApprovedForAll",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_projectId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "isMemberOfProject",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "isProjectFinished",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -724,14 +903,14 @@ export const CONTRACT_ABI = [
 		"name": "projects",
 		"outputs": [
 			{
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "name",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
-				"internalType": "bytes32",
+				"internalType": "string",
 				"name": "theme",
-				"type": "bytes32"
+				"type": "string"
 			},
 			{
 				"internalType": "address",
@@ -747,6 +926,30 @@ export const CONTRACT_ABI = [
 				"internalType": "uint8",
 				"name": "maxMembers",
 				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "memberCount",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "projectStartTime",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -841,6 +1044,25 @@ export const CONTRACT_ABI = [
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "tokenIdToNftType",
+		"outputs": [
+			{
+				"internalType": "enum CoTime.NftType",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
 				"name": "_tokenId",
 				"type": "uint256"
 			}
@@ -875,6 +1097,49 @@ export const CONTRACT_ABI = [
 			}
 		],
 		"name": "userCheckInRecord",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "userGlobalTotalCheckInDays",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "enum CoTime.NftType",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"name": "userMintedNfts",
 		"outputs": [
 			{
 				"internalType": "bool",
