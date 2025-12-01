@@ -135,7 +135,7 @@ contract CoTime is ERC721, ReentrancyGuard {
         uint256 _timestamp,         // 打卡时间戳（前端生成）
         bytes calldata _signature    // 钱包签名
     ) external nonReentrant {
-        require(projects[_projectId].isProjectFinished, "Project already finished");
+        require(!projects[_projectId].isProjectFinished, "Project already finished");
         // 1. 验证项目存在且用户是成员
         require(_projectId < projectCounter, "Project not exist");
         
