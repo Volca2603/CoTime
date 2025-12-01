@@ -35,7 +35,9 @@ const Home = () => {
       // 限制查询数量，避免查询过多项目
       const limit = Math.min(totalCount, 10);
       
-      for (let i = 1; i <= limit; i++) {
+      // 从1开始遍历，避免获取到ID为0的项目
+      // limit为项目数量＋1，第limit个项目为空，避免获取到不存在的项目
+      for (let i = 1; i < limit; i++) {
         projectIds.push(i);
       }
       
@@ -57,6 +59,7 @@ const Home = () => {
             }
             
             // 处理结构体返回的数据
+            // 在获取项目详情的部分，更新项目对象的构建
             const project = {
               id: Number(id),
               name: projectData.name || '未知项目',
@@ -64,7 +67,8 @@ const Home = () => {
               initiator: projectData.initiator || '0x0000000000000000000000000000000000000000',
               days: Number(projectData.allStreakDays) || 0,
               maxMembers: Number(projectData.maxMembers) || 0,
-              memberCount: Number(projectData.memberCount) || 0
+              memberCount: Number(projectData.memberCount) || 0,
+              isProjectFinished: Boolean(projectData.isProjectFinished) // 添加结束状态字段
             };
             
             console.log(`成功获取项目 ${id} 详情:`, project);

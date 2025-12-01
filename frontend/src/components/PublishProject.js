@@ -2,14 +2,13 @@ import { useState, useContext } from 'react';
 import { Web3Context } from '../contexts/Web3Context';
 import { ethers } from 'ethers';
 
-// 修改props接收，添加onClose参数
 const PublishProject = ({ onSuccess, onClose }) => {
   const { callWriteMethod } = useContext(Web3Context);
   const [formData, setFormData] = useState({
     name: '',
     theme: '',
-    allStreakDays: '7', // 默认7天
-    maxMembers: '5'     // 默认5人
+    allStreakDays: '', 
+    maxMembers: ''     
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,13 +60,13 @@ const PublishProject = ({ onSuccess, onClose }) => {
         setFormData({ 
           name: '', 
           theme: '', 
-          allStreakDays: '7', 
-          maxMembers: '5' 
+          allStreakDays: '', 
+          maxMembers: '' 
         });
         if (onSuccess) onSuccess();
         // 成功后自动关闭弹窗
         setTimeout(() => {
-          onClose(); // 直接调用，不需要额外检查
+          // onClose(); // 直接调用，不需要额外检查
         }, 1500);
       }
     } catch (err) {
@@ -79,27 +78,12 @@ const PublishProject = ({ onSuccess, onClose }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl mx-auto relative">
-      {/* 添加relative类，使内部的absolute定位元素基于此容器 */}
+    <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl mx-auto">
+      {/* 移除了relative类和关闭按钮 */}
       
-      {/* 其他内容保持不变 */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-[#e27d60]">发布新项目</h2>
-        重写关闭按钮，使用更简单直接的实现
-        <button 
-          className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-700 transition-colors z-10"
-          onClick={() => {
-            console.log('关闭按钮被点击'); // 添加调试日志
-            if (onClose) {
-              onClose();
-            }
-          }}
-          type="button"
-          style={{ cursor: 'pointer', outline: 'none' }}
-        >
-          &times; {/* 使用HTML实体符号代替SVG，更简单可靠 */}
-        </button>
-        
+        {/* 移除了关闭按钮 */}
       </div>
       
       {error && (
@@ -156,6 +140,7 @@ const PublishProject = ({ onSuccess, onClose }) => {
             onChange={handleChange}
             min="1"
             max="365"
+            placeholder="1~365"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85cdca] focus:border-transparent transition-all"
             required
           />
@@ -171,6 +156,7 @@ const PublishProject = ({ onSuccess, onClose }) => {
             onChange={handleChange}
             min="1"
             max="255"
+            placeholder="1~255"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85cdca] focus:border-transparent transition-all"
             required
           />

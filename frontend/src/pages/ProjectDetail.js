@@ -32,7 +32,8 @@ const ProjectDetail = () => {
           initiator: projectData.initiator,
           days: Number(projectData.allStreakDays), // 显式转换为JavaScript数字
           maxMembers: Number(projectData.maxMembers), // 显式转换为JavaScript数字
-          memberCount: Number(projectData.memberCount) // 显式转换为JavaScript数字
+          memberCount: Number(projectData.memberCount), // 显式转换为JavaScript数字
+          isProjectFinished: projectData.isProjectFinished // 添加项目结束状态
         };
         setProject(projectDetails);
         
@@ -239,12 +240,19 @@ const ProjectDetail = () => {
                 {isJoined ? '已加入' : '未加入'}
               </span>
             </div>
+            {/* 项目状态 - 已修复属性名称 */}
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-600">项目状态</span>
+              <span className={`font-medium ${project.isProjectFinished ? 'text-gray-700' : 'text-green-600'}`}>
+                {project.isProjectFinished ? '已结束' : '进行中'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 操作按钮区域 */}
+        {/* 操作按钮区域 - 修复条件渲染逻辑 */}
         <div className="flex justify-center mb-8">
-          {canJoin && (
+          {canJoin && !project.isProjectFinished && (
             <button 
               onClick={joinProject} 
               disabled={joining}
@@ -266,29 +274,35 @@ const ProjectDetail = () => {
             </button>
           )}
           
-          {!canJoin && !isJoined && (
+          {(!canJoin && !isJoined) && (
             <div className="px-8 py-3 rounded-lg bg-gray-200 text-gray-700 font-medium">
-              项目已满员
+              {project.memberCount >= project.maxMembers ? '项目已满员' : '无法加入'}
             </div>
           )}
         </div>
 
-        {/* 打卡表单区域 */}
-        
-        {isJoined && (
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
-        <h2 className="text-xl font-semibold text-white flex items-center">
-        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        今日打卡
-        </h2>
-        </div>
-        <div className="p-6">
-        <CheckInForm projectId={project.id} />
-        </div>
-        </div>
+        {/* 打卡表单区域 - 修复缩进和添加项目状态检查 */}
+        {isJoined && !project.isProjectFinished && (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
+              <h2 className="text-xl font-semibold text-white flex items-center">
+                <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                今日打卡
+              </h2>
+            </div>
+            <div className="p-6">
+              <CheckInForm projectId={project.id} />
+            </div>
+          </div>
+        )}
+
+        {/* 项目已结束提示 */}
+        {project.isProjectFinished && (
+          <div className="bg-gray-100 rounded-xl p-6 text-center">
+            <p className="text-lg font-medium text-gray-700">该项目已结束</p>
+          </div>
         )}
       </div>
     </div>

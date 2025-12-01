@@ -32,13 +32,17 @@ const ProfilePage = () => {
             
             // 获取用户在该项目的连续打卡天数
             const streakDays = await callReadMethod('getUserStreak', address, projectId);
-            
+            // 在项目详情获取部分添加
             projectDetails.push({
               id: projectId,
               name: projectData.name,
               theme: projectData.theme,
-              streakDays: Number(streakDays)
+              streakDays: Number(streakDays),
+              isProjectFinished: Boolean(projectData.isProjectFinished) // 添加结束状态
             });
+            
+            // 在渲染项目列表时可以根据需要显示结束状态
+            
           }
         } catch (err) {
           console.error(`获取项目ID ${projectIds[i]} 详情失败:`, err);

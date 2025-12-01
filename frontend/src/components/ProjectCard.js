@@ -10,6 +10,8 @@ const ProjectCard = ({ project, className, isInitiator, onFinishProject }) => {
   // 直接使用字符串属性，不再需要解码
   const name = project.name || '未命名项目';
   const theme = project.theme || project.subject || '暂无主题'; // 兼容可能存在的旧数据
+  // 获取项目结束状态
+  const isFinished = project.isProjectFinished || false;
   
   // 根据主题文本生成简单的颜色标识
   const getThemeColorClass = (themeText) => {
@@ -28,7 +30,7 @@ const ProjectCard = ({ project, className, isInitiator, onFinishProject }) => {
   };
 
   const handleFinishClick = () => {
-    if (onFinishProject && project.id) {
+    if (onFinishProject && project.id && !isFinished) {
       onFinishProject(project.id);
     }
   };
@@ -36,10 +38,18 @@ const ProjectCard = ({ project, className, isInitiator, onFinishProject }) => {
   return (
     <div className={`transform hover:-translate-y-1 transition-all duration-300 bg-white rounded-xl shadow-md hover:shadow-lg border border-gray-100 overflow-hidden ${className}`}>
       <div className="p-5 pb-12 relative mb-3">
-        <h3 className="text-xl font-bold text-dark mb-2 relative inline-block group truncate max-w-full">
-          {name}
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-300 group-hover:w-full"></span>
-        </h3>
+        <div className="flex justify-between items-start">
+          <h3 className="text-xl font-bold text-dark mb-2 relative inline-block group truncate max-w-full">
+            {name}
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-300 group-hover:w-full"></span>
+          </h3>
+          {/* 显示项目结束标签 */}
+          {isFinished && (
+            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+              已结束
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 mb-3">
           <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getThemeColorClass(theme)}`}>
             {theme}
@@ -50,7 +60,8 @@ const ProjectCard = ({ project, className, isInitiator, onFinishProject }) => {
           <span className="flex items-center gap-1">👥 {project.memberCount || 0} / {project.maxMembers || 0} </span>
         </div>
         <div className="absolute bottom-1 right-5 flex gap-2">
-          {isInitiator && (
+          {/* 如果项目已结束或不是发起人，则不显示结束按钮 */}
+          {isInitiator && !isFinished && (
             <button 
               onClick={handleFinishClick}
               className="bg-red-100 text-red-600 inline-block whitespace-nowrap px-4 py-1.5 rounded-lg font-medium transition-all duration-300 hover:bg-red-200"
